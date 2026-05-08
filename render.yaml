@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: voiceid
+    runtime: python
+    buildCommand: |
+      cd backend
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    startCommand: cd backend && gunicorn app:app
+    envVars:
+      - key: SUPABASE_URL
+        value: https://iwdpfafkcgnfkqcskpal.supabase.co
+      - key: SUPABASE_KEY
+        value: sb_publishable_CQeLQ3eOqxM3XO7SQGrsAw_NXufiLFI
+    pythonVersion: 3.11.9

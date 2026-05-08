@@ -1,7 +1,7 @@
 flask==2.3.0
 flask-cors==4.0.0
-supabase==2.30.0
-numpy==1.24.3
+supabase==1.0.3
+numpy==1.23.5
 torch==2.0.1
 librosa==0.10.0
 resemblyzer==0.1.0
