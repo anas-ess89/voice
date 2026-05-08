@@ -1,18 +1,7 @@
 """
 app.py - VoiceID Backend avec Supabase Auth et Stockage Cloud
 """
-import os
 
-# Configuration pour Render
-UPLOAD_FOLDER = '/tmp/uploads'
-MODEL_FOLDER = '/tmp/trained_models'
-
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(MODEL_FOLDER, exist_ok=True)
-
-# Utiliser les variables d'environnement Render
-SUPABASE_URL = os.environ.get('SUPABASE_URL', SUPABASE_URL)
-SUPABASE_KEY = os.environ.get('SUPABASE_KEY', SUPABASE_KEY)
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os, sys, io, wave, tempfile
@@ -21,6 +10,18 @@ import pickle
 from pathlib import Path
 from datetime import datetime
 import warnings
+
+# Configuration Supabase - valeurs directes
+SUPABASE_URL = "https://iwdpfafkcgnfkqcskpal.supabase.co"
+SUPABASE_KEY = "sb_publishable_CQeLQ3eOqxM3XO7SQGrsAw_NXufiLFI"
+
+# Configuration pour Render
+UPLOAD_FOLDER = '/tmp/uploads'
+MODEL_FOLDER = '/tmp/trained_models'
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(MODEL_FOLDER, exist_ok=True)
+
 warnings.filterwarnings('ignore')
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -34,12 +35,12 @@ app = Flask(__name__, static_folder=_frontend, static_url_path='')
 app.secret_key = os.urandom(24)
 CORS(app, supports_credentials=True)
 
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
-MODEL_FOLDER = os.path.join(BASE_DIR, 'trained_models')
-ALLOWED_EXT = {'wav', 'mp3', 'flac', 'm4a', 'ogg', 'webm'}
+# Utiliser les dossiers temporaires Render
+UPLOAD_FOLDER_TEMP = '/tmp/uploads'
+MODEL_FOLDER_TEMP = '/tmp/trained_models'
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(MODEL_FOLDER, exist_ok=True)
+os.makedirs(UPLOAD_FOLDER_TEMP, exist_ok=True)
+os.makedirs(MODEL_FOLDER_TEMP, exist_ok=True)
 
 _voice_processor = None
 
@@ -50,8 +51,9 @@ _voice_processor = None
 from supabase_client import supabase, get_current_user, sign_up, login, logout
 from supabase_client import save_audio_to_cloud as save_audio_to_supabase
 from supabase_client import save_embedding_to_cloud as save_embedding_to_supabase
-from supabase_client import save_voice_model_to_cloud  # ← Import direct sans alias
+from supabase_client import save_voice_model_to_cloud
 from supabase_client import load_user_voice_models
+
 # ============================================================================
 # HELPERS
 # ============================================================================
@@ -64,7 +66,7 @@ def get_processor():
     return _voice_processor
 
 def allowed_file(fname: str) -> bool:
-    return '.' in fname and fname.rsplit('.', 1)[1].lower() in ALLOWED_EXT
+    return '.' in fname and fname.rsplit('.', 1)[1].lower() in {'wav', 'mp3', 'flac', 'm4a', 'ogg', 'webm'}
 
 def ts() -> str:
     return datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -176,7 +178,7 @@ def api_me():
     return jsonify({'authenticated': False, 'user': None})
 
 # ============================================================================
-# ROUTES API - UPLOAD (Sauvegarde dans Supabase)
+# ROUTES API - UPLOAD
 # ============================================================================
 
 @app.route('/api/upload', methods=['POST'])
@@ -196,7 +198,7 @@ def upload_audio():
     audio_bytes = file.read()
     wav_bytes = convert_to_wav(audio_bytes)
     
-    temp_path = os.path.join(UPLOAD_FOLDER, f"temp_{filename}")
+    temp_path = os.path.join(UPLOAD_FOLDER_TEMP, f"temp_{filename}")
     with open(temp_path, 'wb') as f:
         f.write(wav_bytes)
 
@@ -242,7 +244,7 @@ def record_audio():
         wav_bytes = convert_to_wav(raw)
         filename = f"{prefix}_{ts()}.wav"
         
-        temp_path = os.path.join(UPLOAD_FOLDER, f"temp_{filename}")
+        temp_path = os.path.join(UPLOAD_FOLDER_TEMP, f"temp_{filename}")
         with open(temp_path, 'wb') as f:
             f.write(wav_bytes)
 
@@ -266,7 +268,7 @@ def record_audio():
             os.unlink(temp_path)
 
 # ============================================================================
-# ROUTES API - TRAIN (avec filtrage par user)
+# ROUTES API - TRAIN
 # ============================================================================
 
 @app.route('/api/train', methods=['POST'])
@@ -285,7 +287,6 @@ def train_model():
         return jsonify({'error': 'No files provided'}), 400
     
     try:
-        # Récupérer les embeddings uniquement de l'utilisateur connecté
         embeddings = []
         successful_files = []
         
@@ -294,7 +295,6 @@ def train_model():
             if not filename:
                 continue
             
-            # Filtrer par user_id
             result = supabase.table("embeddings").select("*").eq("audio_file_name", filename).eq("user_id", user['id']).execute()
             
             if result.data:
@@ -309,12 +309,10 @@ def train_model():
         if len(embeddings) < 1:
             return jsonify({'error': 'Aucun embedding valide trouvé pour cet utilisateur'}), 400
         
-        # Calculer l'embedding moyen
         arr = np.array(embeddings)
         mean_emb = arr.mean(axis=0)
         mean_emb /= np.linalg.norm(mean_emb)
         
-        # Calculer similarité intra-classe
         intra_sims = []
         for i in range(len(arr)):
             for j in range(i + 1, len(arr)):
@@ -322,10 +320,9 @@ def train_model():
         
         intra_mean = float(np.mean(intra_sims)) if intra_sims else 0.0
         
-        # Créer le modèle
         model = {
             'speaker_name': speaker_name,
-            'user_id': user['id'],  # Ajouter user_id au modèle
+            'user_id': user['id'],
             'embeddings': [e.tolist() for e in embeddings],
             'mean_embedding': mean_emb.tolist(),
             'n_samples': len(embeddings),
@@ -334,11 +331,8 @@ def train_model():
             'files': successful_files
         }
         
-        # Sauvegarder dans le cloud (storage)
-        # Sauvegarder dans le cloud (storage)
         save_voice_model_to_cloud(user['id'], speaker_name, model)
         
-        # Mettre à jour le processeur en mémoire
         vp = get_processor()
         vp.speaker_models[speaker_name] = model
         
@@ -370,12 +364,11 @@ def identify_speaker():
         return jsonify({'error': 'No audio file'}), 400
     file = request.files['audio']
     
-    temp_path = os.path.join(UPLOAD_FOLDER, f"temp_id_{ts()}.wav")
+    temp_path = os.path.join(UPLOAD_FOLDER_TEMP, f"temp_id_{ts()}.wav")
     file.save(temp_path)
     
     try:
         vp = get_processor()
-        # Charger les modèles de l'utilisateur
         models = load_user_voice_models(user['id'])
         vp.speaker_models = models
         
@@ -400,7 +393,7 @@ def identify_record():
         return jsonify({'error': 'Recording too short'}), 400
     try:
         wav_bytes = convert_to_wav(raw)
-        temp_path = os.path.join(UPLOAD_FOLDER, f"temp_id_rec_{ts()}.wav")
+        temp_path = os.path.join(UPLOAD_FOLDER_TEMP, f"temp_id_rec_{ts()}.wav")
         with open(temp_path, 'wb') as f:
             f.write(wav_bytes)
         
@@ -417,7 +410,7 @@ def identify_record():
             os.unlink(temp_path)
 
 # ============================================================================
-# ROUTES API - SPEAKERS (avec filtrage par user)
+# ROUTES API - SPEAKERS
 # ============================================================================
 
 @app.route('/api/speakers', methods=['GET'])
@@ -426,10 +419,8 @@ def list_speakers():
     if not user:
         return jsonify({'error': 'Authentication required'}), 401
     
-    # Charger uniquement les modèles de cet utilisateur depuis le cloud
     models = load_user_voice_models(user['id'])
     
-    # Formater la réponse
     speakers = []
     for name, model in models.items():
         speakers.append({
@@ -447,12 +438,10 @@ def delete_speaker(name):
     if not user:
         return jsonify({'error': 'Authentication required'}), 401
     
-    # Supprimer le fichier du cloud
     try:
         file_path = f"{user['id']}/models/{name}.pkl"
         supabase.storage.from_("voice-models").remove([file_path])
         
-        # Supprimer de la mémoire
         vp = get_processor()
         if name in vp.speaker_models:
             del vp.speaker_models[name]
@@ -476,7 +465,7 @@ def health():
     })
 
 # ============================================================================
-# ROUTES API - COMPARE (à implémenter)
+# ROUTES API - COMPARE
 # ============================================================================
 
 @app.route('/api/compare', methods=['POST'])
@@ -492,9 +481,10 @@ def compare_voices():
 # ============================================================================
 
 if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
     print("=" * 55)
     print("  VoiceID — Neural Voice Recognition with Supabase")
     print("=" * 55)
-    print(f"  http://localhost:5000")
+    print(f"  http://localhost:{port}")
     print("=" * 55)
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=port)
