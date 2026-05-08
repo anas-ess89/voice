@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>VoiceID — Neural Voice Recognition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<!-- ── Sidebar ───────────────────────────────────────────────── -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 40 40" fill="none">
+        <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M12 20 Q16 12 20 20 Q24 28 28 20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <circle cx="20" cy="20" r="3" fill="currentColor"/>
+      </svg>
+    </div>
+    <span class="logo-text">VoiceID</span>
+  </div>
+
+  <div class="nav-label">NAVIGATION</div>
+  <ul class="nav-list">
+    <li><button class="nav-btn active" data-tab="analyze">
+      <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 19V6l12-3v13M9 19c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm12-3c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2z"/></svg></span>
+      <span>Analyse</span>
+    </button></li>
+    <li><button class="nav-btn" data-tab="compare">
+      <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></span>
+      <span>Comparer</span>
+    </button></li>
+    <li><button class="nav-btn" data-tab="train">
+      <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></span>
+      <span>Entraîner</span>
+    </button></li>
+    <li><button class="nav-btn" data-tab="identify">
+      <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
+      <span>Identifier</span>
+    </button></li>
+    <li><button class="nav-btn" data-tab="speakers">
+      <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+      <span>Locuteurs</span>
+      <span class="nav-badge" id="badge-speakers">0</span>
+    </button></li>
+  </ul>
+
+  <div class="sidebar-status">
+    <div class="status-indicator" id="status-dot"></div>
+    <span id="status-text">Connexion...</span>
+  </div>
+</nav>
+
+<button class="mobile-nav-toggle" id="nav-toggle"><span></span><span></span><span></span></button>
+
+<!-- ── Main ──────────────────────────────────────────────────── -->
+<main class="main-content">
+
+  <!-- ══ ANALYSE ══════════════════════════════════════════════ -->
+  <section class="tab-panel active" id="tab-analyze">
+    <div class="panel-header">
+      <div>
+        <h1 class="panel-title">Analyse Vocale</h1>
+        <p class="panel-sub">Uploadez ou enregistrez un audio pour extraire son empreinte neurale</p>
+      </div>
+    </div>
+
+    <!-- Source toggle -->
+    <div class="source-toggle" id="analyze-toggle">
+      <button class="src-btn active" data-src="upload" data-target="analyze">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload fichier
+      </button>
+      <button class="src-btn" data-src="record" data-target="analyze">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+        Enregistrer
+      </button>
+    </div>
+
+    <!-- Upload panel -->
+    <div class="src-panel" id="analyze-upload-panel">
+      <div class="drop-zone" id="analyze-dropzone">
+        <div class="drop-inner">
+          <div class="drop-icon">
+            <svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" stroke="currentColor" stroke-width="1"/><path d="M24 32 Q28 22 32 32 Q36 42 40 32" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"/><circle cx="32" cy="32" r="4" fill="currentColor" opacity=".4"/></svg>
+            <div class="drop-rings"></div>
+          </div>
+          <p class="drop-title">Glissez un fichier audio ici</p>
+          <p class="drop-sub">WAV · MP3 · FLAC · M4A · OGG</p>
+          <input type="file" id="analyze-input" accept=".wav,.mp3,.flac,.m4a,.ogg" hidden/>
+          <button class="btn btn-ghost" onclick="document.getElementById('analyze-input').click()">Choisir un fichier</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Record panel -->
+    <div class="src-panel hidden" id="analyze-record-panel">
+      <div class="recorder-card" id="analyze-recorder">
+        <div class="rec-visualizer" id="analyze-viz">
+          <canvas id="analyze-canvas" width="500" height="80"></canvas>
+        </div>
+        <div class="rec-timer" id="analyze-timer">0:00</div>
+        <div class="rec-controls">
+          <button class="btn btn-record" id="analyze-rec-btn" onclick="toggleRecord('analyze')">
+            <span class="rec-dot"></span> Commencer l'enregistrement
+          </button>
+          <button class="btn btn-ghost btn-sm hidden" id="analyze-send-btn" onclick="sendRecording('analyze')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Analyser cet audio
+          </button>
+        </div>
+        <p class="rec-hint">Parlez clairement · Minimum 3 secondes · 16kHz WAV</p>
+      </div>
+    </div>
+
+    <div class="result-card hidden" id="analyze-result"></div>
+  </section>
+
+  <!-- ══ COMPARER ══════════════════════════════════════════════ -->
+  <section class="tab-panel" id="tab-compare">
+    <div class="panel-header">
+      <div>
+        <h1 class="panel-title">Comparaison</h1>
+        <p class="panel-sub">Comparez deux voix et mesurez leur similarité</p>
+      </div>
+    </div>
+
+    <div class="compare-layout">
+      <div class="compare-slot">
+        <div class="slot-label">VOIX A</div>
+        <div class="source-toggle mini" id="compare1-toggle">
+          <button class="src-btn active" data-src="upload" data-target="compare1">Upload</button>
+          <button class="src-btn" data-src="record" data-target="compare1">Micro</button>
+        </div>
+        <div id="compare1-upload-panel">
+          <div class="slot-drop" id="slot1-drop">
+            <div class="slot-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8"/></svg></div>
+            <p>Déposez ou cliquez</p>
+            <input type="file" id="compare1-input" accept=".wav,.mp3,.flac,.m4a,.ogg" hidden/>
+          </div>
+        </div>
+        <div id="compare1-record-panel" class="hidden">
+          <div class="recorder-card mini">
+            <canvas id="compare1-canvas" width="300" height="50"></canvas>
+            <div class="rec-timer mini" id="compare1-timer">0:00</div>
+            <div class="rec-controls mini">
+              <button class="btn btn-record btn-sm" id="compare1-rec-btn" onclick="toggleRecord('compare1')">
+                <span class="rec-dot"></span> Enregistrer
+              </button>
+              <button class="btn btn-ghost btn-sm hidden" id="compare1-send-btn" onclick="sendRecording('compare1')">✓ Utiliser</button>
+            </div>
+          </div>
+        </div>
+        <div class="slot-filename" id="slot1-name"></div>
+      </div>
+
+      <div class="vs-divider"><span>VS</span></div>
+
+      <div class="compare-slot">
+        <div class="slot-label">VOIX B</div>
+        <div class="source-toggle mini" id="compare2-toggle">
+          <button class="src-btn active" data-src="upload" data-target="compare2">Upload</button>
+          <button class="src-btn" data-src="record" data-target="compare2">Micro</button>
+        </div>
+        <div id="compare2-upload-panel">
+          <div class="slot-drop" id="slot2-drop">
+            <div class="slot-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8"/></svg></div>
+            <p>Déposez ou cliquez</p>
+            <input type="file" id="compare2-input" accept=".wav,.mp3,.flac,.m4a,.ogg" hidden/>
+          </div>
+        </div>
+        <div id="compare2-record-panel" class="hidden">
+          <div class="recorder-card mini">
+            <canvas id="compare2-canvas" width="300" height="50"></canvas>
+            <div class="rec-timer mini" id="compare2-timer">0:00</div>
+            <div class="rec-controls mini">
+              <button class="btn btn-record btn-sm" id="compare2-rec-btn" onclick="toggleRecord('compare2')">
+                <span class="rec-dot"></span> Enregistrer
+              </button>
+              <button class="btn btn-ghost btn-sm hidden" id="compare2-send-btn" onclick="sendRecording('compare2')">✓ Utiliser</button>
+            </div>
+          </div>
+        </div>
+        <div class="slot-filename" id="slot2-name"></div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin:2rem 0">
+      <button class="btn btn-primary" id="compare-btn" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+        Analyser la similarité
+      </button>
+    </div>
+    <div class="result-card hidden" id="compare-result"></div>
+  </section>
+
+  <!-- ══ ENTRAÎNER ═════════════════════════════════════════════ -->
+  <section class="tab-panel" id="tab-train">
+    <div class="panel-header">
+      <div>
+        <h1 class="panel-title">Entraîner un modèle</h1>
+        <p class="panel-sub">Upload ou enregistrez 3+ audios, puis lancez l'entraînement</p>
+      </div>
+    </div>
+
+    <div class="train-layout">
+      <div class="form-card">
+        <label class="field-label">NOM DU LOCUTEUR</label>
+        <input type="text" id="speaker-name" class="field-input" placeholder="ex: Marie_Dupont" autocomplete="off"/>
+
+        <label class="field-label" style="margin-top:1.5rem">SOURCES AUDIO</label>
+
+        <!-- Toggle upload / record -->
+        <div class="source-toggle" id="train-toggle">
+          <button class="src-btn active" data-src="upload" data-target="train">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Upload fichiers
+          </button>
+          <button class="src-btn" data-src="record" data-target="train">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+            Enregistrer
+          </button>
+        </div>
+
+        <!-- Upload panel -->
+        <div id="train-upload-panel">
+          <div class="train-dropzone" id="train-dropzone">
+            <input type="file" id="train-input" multiple accept=".wav,.mp3,.flac,.m4a,.ogg" hidden/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <p>Glissez vos fichiers ici ou <button class="btn-link" onclick="document.getElementById('train-input').click()">parcourir</button></p>
+            <p class="hint">Recommandé : 3+ fichiers · 5–30 sec chacun</p>
+          </div>
+        </div>
+
+        <!-- Record panel for training -->
+        <div id="train-record-panel" class="hidden">
+          <div class="train-recorder-card">
+            <div class="train-rec-header">
+              <span class="field-label" style="margin:0">SESSION D'ENREGISTREMENT</span>
+              <span class="rec-count-badge" id="train-rec-count">0 / 3 min</span>
+            </div>
+            <div class="rec-visualizer">
+              <canvas id="train-canvas" width="460" height="70"></canvas>
+            </div>
+            <div class="rec-timer" id="train-timer">0:00</div>
+            <div class="rec-controls">
+              <button class="btn btn-record" id="train-rec-btn" onclick="toggleRecord('train')">
+                <span class="rec-dot"></span> <span id="train-rec-label">Enregistrer l'échantillon</span>
+              </button>
+              <button class="btn btn-ghost btn-sm hidden" id="train-save-btn" onclick="saveTrainRecording()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+                Sauvegarder cet échantillon
+              </button>
+            </div>
+            <p class="rec-hint">Enregistrez au moins 3 échantillons différents · Parlez naturellement</p>
+            <div class="train-rec-previews" id="train-rec-previews"></div>
+          </div>
+        </div>
+
+        <!-- Shared file list (upload + recorded) -->
+        <div class="file-list" id="train-file-list"></div>
+
+        <button class="btn btn-primary btn-full" id="train-btn" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Entraîner le modèle
+        </button>
+      </div>
+      <div class="result-card hidden" id="train-result" style="flex:1;min-width:280px;align-self:start"></div>
+    </div>
+  </section>
+
+  <!-- ══ IDENTIFIER ════════════════════════════════════════════ -->
+  <section class="tab-panel" id="tab-identify">
+    <div class="panel-header">
+      <div>
+        <h1 class="panel-title">Identification</h1>
+        <p class="panel-sub">Uploadez ou parlez au micro pour identifier le locuteur</p>
+      </div>
+    </div>
+
+    <!-- Toggle -->
+    <div class="source-toggle" id="identify-toggle">
+      <button class="src-btn active" data-src="upload" data-target="identify">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload fichier
+      </button>
+      <button class="src-btn" data-src="record" data-target="identify">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+        Micro en direct
+      </button>
+    </div>
+
+    <!-- Upload panel -->
+    <div class="src-panel" id="identify-upload-panel">
+      <div class="drop-zone" id="identify-dropzone">
+        <div class="drop-inner">
+          <div class="drop-icon identify-icon">
+            <svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="20" r="10" stroke="currentColor" stroke-width="1.5"/><path d="M12 56c0-11 9-20 20-20s20 9 20 20" stroke="currentColor" stroke-width="1.5"/><circle cx="32" cy="32" r="30" stroke="currentColor" stroke-width="1" stroke-dasharray="4 4"/></svg>
+          </div>
+          <p class="drop-title">Importer pour identifier</p>
+          <p class="drop-sub">L'IA comparera avec tous les locuteurs enregistrés</p>
+          <input type="file" id="identify-input" accept=".wav,.mp3,.flac,.m4a,.ogg" hidden/>
+          <button class="btn btn-ghost" onclick="document.getElementById('identify-input').click()">Choisir un fichier</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Record panel -->
+    <div class="src-panel hidden" id="identify-record-panel">
+      <div class="recorder-card" id="identify-recorder">
+        <div class="rec-visualizer" id="identify-viz">
+          <canvas id="identify-canvas" width="500" height="80"></canvas>
+        </div>
+        <div class="rec-timer" id="identify-timer">0:00</div>
+        <div class="rec-controls">
+          <button class="btn btn-record" id="identify-rec-btn" onclick="toggleRecord('identify')">
+            <span class="rec-dot"></span> Commencer l'identification
+          </button>
+          <button class="btn btn-primary hidden" id="identify-send-btn" onclick="sendRecording('identify')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            Identifier maintenant
+          </button>
+        </div>
+        <p class="rec-hint">Parlez 3–10 secondes · Haute qualité 16kHz garantie</p>
+      </div>
+    </div>
+
+    <div class="result-card hidden" id="identify-result"></div>
+  </section>
+
+  <!-- ══ LOCUTEURS ═════════════════════════════════════════════ -->
+  <section class="tab-panel" id="tab-speakers">
+    <div class="panel-header">
+      <div>
+        <h1 class="panel-title">Locuteurs enregistrés</h1>
+        <p class="panel-sub">Base de données des empreintes neurales</p>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="loadSpeakers()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        Actualiser
+      </button>
+    </div>
+    <div class="speakers-grid" id="speakers-grid">
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" width="48" height="48"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        <p>Aucun locuteur enregistré</p>
+        <p class="hint">Allez dans Entraîner pour ajouter un locuteur</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast-container" id="toast-container"></div>
+<div class="loading-overlay hidden" id="loading-overlay">
+  <div class="loading-spinner">
+    <div class="spinner-ring"></div>
+    <p id="loading-text">Traitement en cours...</p>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
