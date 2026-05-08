@@ -482,7 +482,7 @@ def compare_voices():
 # ============================================================================
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 10000))
+    #port = int(os.environ.get('PORT', 10000))
     print("=" * 55)
     print("  VoiceID — Neural Voice Recognition with Supabase")
     print("=" * 55)
