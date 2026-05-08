@@ -4,7 +4,7 @@ supabase==1.0.3
 numpy==1.23.5
 torch==2.0.1
 librosa==0.10.0
-resemblyzer==0.1.0
+resemblyzer==0.1.4
 pydub==0.25.1
 soundfile==0.12.1
 gunicorn==20.1.0
