@@ -1,7 +1,18 @@
 """
 app.py - VoiceID Backend avec Supabase Auth et Stockage Cloud
 """
+import os
 
+# Configuration pour Render
+UPLOAD_FOLDER = '/tmp/uploads'
+MODEL_FOLDER = '/tmp/trained_models'
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(MODEL_FOLDER, exist_ok=True)
+
+# Utiliser les variables d'environnement Render
+SUPABASE_URL = os.environ.get('SUPABASE_URL', SUPABASE_URL)
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY', SUPABASE_KEY)
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import os, sys, io, wave, tempfile
